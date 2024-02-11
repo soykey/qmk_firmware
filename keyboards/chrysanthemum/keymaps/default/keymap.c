@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 
+
 #include QMK_KEYBOARD_H
 #include "analog.h"
-#include "print.h"
+// #include "print.h"
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
     /*
@@ -57,7 +58,8 @@ uint16_t keys[4] = {KC_W, KC_A, KC_S, KC_D};
 
 int16_t value[4] = {0, 0, 0, 0};
 int16_t b_value[4] = {0, 0, 0, 0};
-int16_t diff = 0;
+int16_t ap = 14;
+int16_t diff = 3;
 int16_t f[4] = {0, 0, 0, 0};
 
 void matrix_init_user(void) {
@@ -70,6 +72,7 @@ void matrix_init_user(void) {
 void matrix_scan_user(void) {
 
     for (int i = 0; i<4; i++) {
+        // For 74hc4051 multiplexer
         if (s0[i] == 1) {
             writePinHigh(GP21);
         } else {
@@ -82,24 +85,32 @@ void matrix_scan_user(void) {
         } else {
             writePinLow(GP22);
         }
-        value[i] = analogReadPin(GP28);
 
-        //Rapid Trigger
-        if (value[i] < 100 && f[i] == 0) {
+
+        // Read the value
+        value[i] = analogReadPin(GP28)/10; // 18~180/10 = 1.8~18
+        // uprintf("%d\n", value[i]);
+
+
+        // Press and Release
+        if (value[i] < ap && f[i] == 0) {
             register_code(keys[i]);
             f[i] = 1;
         }
-        diff = value[i] - b_value[i];
-        uprintf("%d\n", diff);
-        if (diff > 10 && f[i] == 1) {
-            unregister_code(keys[i]);
-        }
-        if (value[i] > 100 && f[i] == 1) {
+        if (value[i] > ap && f[i] == 1) {
             unregister_code(keys[i]);
             f[i] = 0;
         }
 
-        b_value[i] = analogReadPin(GP28);
+
+        //Rapid Trigger
+        if (value[i] - b_value[i] > diff && f[i] == 1) {
+            unregister_code(keys[i]);
+        }
+
+
+        // Read the value
+        b_value[i] = analogReadPin(GP28)/10;
     }
 }
 
